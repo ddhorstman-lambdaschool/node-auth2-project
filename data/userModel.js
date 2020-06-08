@@ -13,6 +13,14 @@ function getUsers() {
     .then(users => users.map(({ password, ...user }) => user));
 }
 
+function getUsersByDepartment(dept_name) {
+  return knex("users as u")
+    .join("departments as d", "u.department_id", "d.id")
+    .where({ "d.name": dept_name })
+    .select("u.username", "u.password", "d.name as department")
+    .then(users => users.map(({ password, ...user }) => user));
+}
+
 function getUser(user) {
   return knex("users as u")
     .where(user.id ? { "u.id": user.id } : user)
@@ -28,4 +36,10 @@ function getDepartment(dept) {
     .then(d => d || null);
 }
 
-module.exports = { addUser, getUsers, getUser, getDepartment };
+module.exports = {
+  addUser,
+  getUsers,
+  getUsersByDepartment,
+  getUser,
+  getDepartment,
+};
