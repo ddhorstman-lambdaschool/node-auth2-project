@@ -5,7 +5,7 @@ const { catchAsync } = require("../api/errors");
 async function checkUserAuthorization(req, res, next) {
   const { authorization } = req.headers;
   if (!authorization) {
-    return res.status(401).json({
+    return res.status(403).json({
       message: "Please include your token in an Authorization header",
     });
   }
@@ -20,7 +20,6 @@ async function checkUserAuthorization(req, res, next) {
   }
   jwt.verify(auth, secrets.jwtSecret, (err, data) => {
     if (err) return next(err);
-    console.log(data);
     req.data = data;
     return next();
   });
