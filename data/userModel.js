@@ -21,11 +21,11 @@ function getUser(user) {
     .first();
 }
 
-function validateDepartment(name) {
+function getDepartment(dept) {
   return knex("departments")
-    .where({ name })
+    .where(dept)
     .first()
     .then(d => d || null);
 }
 
-module.exports = { addUser, getUsers, getUser, validateDepartment };
+module.exports = { addUser, getUsers, getUser, getDepartment };

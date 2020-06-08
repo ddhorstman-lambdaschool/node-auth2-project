@@ -12,7 +12,6 @@ router.post(
   validateDepartment,
   catchAsync(async (req, res) => {
     const user = req.body;
-    delete user.department;
     user.password = bcrypt.hashSync(user.password, 10);
     const saved = await db.addUser(user);
     const token = generateToken(saved);
@@ -30,7 +29,8 @@ router.post(
     if (!bcrypt.compareSync(password, passwordHash)) {
       return res.status(401).json({ message: "Invalid password" });
     }
-    res.status(200).json({ message: "Logged in" });
+    const token = generateToken(await db.getUser({ username }));
+    res.status(200).json({ message: "Logged in", token });
   })
 );
 
@@ -66,13 +66,14 @@ function validateDepartment(req, res, next) {
         "You must include a department name when registering a new user.",
     });
   }
-  db.validateDepartment(req.body.department).then(dept => {
+  db.getDepartment({ name: department }).then(dept => {
     if (!dept) {
       return res.status(400).json({
         message: `'${department}' is not a valid department name.`,
       });
     }
     req.body.department_id = dept.id;
+    delete req.body.department;
     next();
   });
 }
