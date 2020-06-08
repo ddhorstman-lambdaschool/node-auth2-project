@@ -1,17 +1,22 @@
 const router = require("express").Router();
 const db = require("../data/userModel");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const secrets = require("../config/secrets");
 const { catchAsync } = require("./errors");
 
 router.post(
   "/register",
   validateUserDoesNotExist,
   validateUserObject,
+  validateDepartment,
   catchAsync(async (req, res) => {
     const user = req.body;
+    delete user.department;
     user.password = bcrypt.hashSync(user.password, 10);
     const saved = await db.addUser(user);
-    res.status(201).json({ ...saved, password: "••••••••••" });
+    const token = generateToken(saved);
+    res.status(201).json({ user: { ...saved, password: "••••••••••" }, token });
   })
 );
 
@@ -25,28 +30,25 @@ router.post(
     if (!bcrypt.compareSync(password, passwordHash)) {
       return res.status(401).json({ message: "Invalid password" });
     }
-    req.session.user = req.user;
     res.status(200).json({ message: "Logged in" });
-  })
-);
-
-router.get(
-  "/logout",
-  catchAsync(async (req, res, next) => {
-    if (req.session.user) {
-      res.clearCookie("node-auth1-session");
-      req.session.destroy(err =>
-        err ? next(err) : res.status(200).json({ message: "Logged out" })
-      );
-    } else {
-      res.status(400).json({ message: "You are not logged in." });
-    }
   })
 );
 
 /*----------------------------------------------------------------------------*/
 /* Middleware
 /*----------------------------------------------------------------------------*/
+function generateToken(user) {
+  const payload = {
+    subject: user.id,
+    username: user.username,
+    department: user.department,
+  };
+  const options = {
+    expiresIn: "7d",
+  };
+  return jwt.sign(payload, secrets.jwtSecret, options);
+}
+
 function validateUserObject(req, res, next) {
   const { username, password } = req.body;
   username && password
@@ -54,6 +56,25 @@ function validateUserObject(req, res, next) {
     : res.status(400).json({
         message: "User object requires both 'username' and 'password' fields",
       });
+}
+
+function validateDepartment(req, res, next) {
+  const { department } = req.body;
+  if (!department) {
+    return res.status(400).json({
+      message:
+        "You must include a department name when registering a new user.",
+    });
+  }
+  db.validateDepartment(req.body.department).then(dept => {
+    if (!dept) {
+      return res.status(400).json({
+        message: `'${department}' is not a valid department name.`,
+      });
+    }
+    req.body.department_id = dept.id;
+    next();
+  });
 }
 
 function validateUserExists(req, res, next) {
